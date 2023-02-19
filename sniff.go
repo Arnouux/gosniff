@@ -6,13 +6,16 @@ import (
 	"github.com/google/gopacket/pcap"
 	"sync"
 	"net"
-	//"time"
+	"time"
 	"strings"
 	"strconv"
+    "math"
 )
 
 var (
 	localIP = GetOutboundIP()
+	batchInterval = 2 * time.Second
+	nbBatches = 20
 )
 
 func GetOutboundIP() []byte {
@@ -60,23 +63,27 @@ func listenDevice(device pcap.Interface) {
 	defer handle.Close()
 	
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+    start := time.Now()
+	inPackets := make([]int, nbBatches)
+	outPackets := make([]int, nbBatches)
 	for packet := range packetSource.Packets() {
 		if packet.NetworkLayer() != nil { // for example ARP packets do not have Network layer
 			netFlow := packet.NetworkLayer().NetworkFlow()
 			src, dst := netFlow.Endpoints()
-			fmt.Println(device.Name + " : " + src.String() + " -> " + dst.String())
+			//fmt.Println(device.Name + " : " + src.String() + " -> " + dst.String())
 			if dst.String() == "239.255.255.250" {
 				 fmt.Println("SSDP")
 			}
+			batch := int(math.Mod(time.Since(start).Seconds() / batchInterval.Seconds(), float64(nbBatches)))
 			if adressSlicesEqual(dst.Raw(), localIP) {
-				// in
+				inPackets[batch]++
+				fmt.Printf("%v\n", inPackets)
 			} else if adressSlicesEqual(src.Raw(), localIP) {
-				// out
+				outPackets[batch]++
+				fmt.Printf("%v\n", outPackets)
 			}
-			// } else if dst.String() == "127.0.0.1" {
+			// } else if dst.String() == "127.0.0.1" { // in loopback device
 			// 	fmt.Println("in")
-			// } else {
-			// 	fmt.Println(packet)
 			// }
 		}
 	}
