@@ -67,24 +67,23 @@ func listenDevice(device pcap.Interface) {
 	inPackets := make([]int, nbBatches)
 	outPackets := make([]int, nbBatches)
 	for packet := range packetSource.Packets() {
-		if packet.NetworkLayer() != nil { // for example ARP packets do not have Network layer
-			netFlow := packet.NetworkLayer().NetworkFlow()
-			src, dst := netFlow.Endpoints()
-			//fmt.Println(device.Name + " : " + src.String() + " -> " + dst.String())
-			if dst.String() == "239.255.255.250" {
-				 fmt.Println("SSDP")
-			}
-			batch := int(math.Mod(time.Since(start).Seconds() / batchInterval.Seconds(), float64(nbBatches)))
-			if adressSlicesEqual(dst.Raw(), localIP) {
-				inPackets[batch]++
-				fmt.Printf("%v\n", inPackets)
-			} else if adressSlicesEqual(src.Raw(), localIP) {
-				outPackets[batch]++
-				fmt.Printf("%v\n", outPackets)
-			}
-			// } else if dst.String() == "127.0.0.1" { // in loopback device
-			// 	fmt.Println("in")
-			// }
+		if packet.NetworkLayer() == nil { // for example ARP packets do not have Network layer
+			continue
+		}
+
+		netFlow := packet.NetworkLayer().NetworkFlow()
+		src, dst := netFlow.Endpoints()
+		//fmt.Println(device.Name + " : " + src.String() + " -> " + dst.String())
+		if dst.String() == "239.255.255.250" {
+				fmt.Println("SSDP")
+		}
+		batch := int(math.Mod(time.Since(start).Seconds() / batchInterval.Seconds(), float64(nbBatches)))
+		if adressSlicesEqual(dst.Raw(), localIP) {
+			inPackets[batch]++
+			fmt.Printf("%v\n", inPackets)
+		} else if adressSlicesEqual(src.Raw(), localIP) {
+			outPackets[batch]++
+			fmt.Printf("%v\n", outPackets)
 		}
 	}
 }
