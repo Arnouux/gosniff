@@ -16,6 +16,7 @@ var (
 	localIP = GetOutboundIP()
 	batchInterval = 2 * time.Second
 	nbBatches = 20
+	pushData = networkData{In: 0, Out: 0}
 )
 
 func GetOutboundIP() []byte {
@@ -50,6 +51,11 @@ func adressSlicesEqual(addr1 []byte, addr2 []byte) bool {
     return true
 }
 
+type networkData struct {
+	In int
+	Out int
+}
+
 func listenDevice(device pcap.Interface) {
 	fmt.Printf("Device Name: %s\n", device.Name)
 	fmt.Printf("Device Description: %s\n", device.Description)
@@ -66,6 +72,7 @@ func listenDevice(device pcap.Interface) {
     start := time.Now()
 	inPackets := make([]int, nbBatches)
 	outPackets := make([]int, nbBatches)
+	lastBatch := 0
 	for packet := range packetSource.Packets() {
 		if packet.NetworkLayer() == nil { // for example ARP packets do not have Network layer
 			continue
@@ -85,11 +92,27 @@ func listenDevice(device pcap.Interface) {
 			outPackets[batch]++
 			fmt.Printf("%v\n", outPackets)
 		}
+		
+		if batch != lastBatch {
+			updateWeb(inPackets[lastBatch], outPackets[lastBatch])
+			lastBatch = batch
+		}
 	}
 }
 
+func updateWeb(inPackets int, outPackets int) {
+	pushData = networkData{
+		In: inPackets,
+		Out: outPackets,
+	}
+	fmt.Printf("updateWeb as %v\n", pushData)
+}
+
 func main() {
-	fmt.Println("hi")
+	// if len(os.Args) > 1 && (os.Args[1] == "-s" || os.Args[1] == "--server") {
+	// 	fmt.Println("Starting monitor server")
+	 	go run()
+	// }
 
 	devices, err := pcap.FindAllDevs()
 	if err != nil {
