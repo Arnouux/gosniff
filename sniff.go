@@ -88,24 +88,21 @@ func listenDevice(device pcap.Interface) {
 		if adressSlicesEqual(dst.Raw(), localIP) {
 			inPackets[batch]++
 			fmt.Printf("%v\n", inPackets)
+		
+			if batch != lastBatch {
+				pushData.In = inPackets[lastBatch]
+				lastBatch = batch
+			}
 		} else if adressSlicesEqual(src.Raw(), localIP) {
 			outPackets[batch]++
 			fmt.Printf("%v\n", outPackets)
-		}
 		
-		if batch != lastBatch {
-			updateWeb(inPackets[lastBatch], outPackets[lastBatch])
-			lastBatch = batch
+			if batch != lastBatch {
+				pushData.Out = outPackets[lastBatch]
+				lastBatch = batch
+			}
 		}
 	}
-}
-
-func updateWeb(inPackets int, outPackets int) {
-	pushData = networkData{
-		In: inPackets,
-		Out: outPackets,
-	}
-	fmt.Printf("updateWeb as %v\n", pushData)
 }
 
 func main() {
